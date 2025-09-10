@@ -24,15 +24,23 @@ if 'cost_usd' in df.columns:
     df['anomaly'] = iso.fit_predict(df[['cost_usd']].fillna(0))
     st.write("Anomalies:", df[df['anomaly']==-1].head())
 
+# Prophet forecasting demo
 if 'month' in df.columns:
     monthly = df.groupby('month', as_index=False)['cost_usd'].sum()
     monthly['ds'] = pd.to_datetime(monthly['month']+'-01')
     monthly = monthly.rename(columns={'cost_usd':'y'})
-    m = Prophet(yearly_seasonality=False)
-    m.fit(monthly[['ds','y']])
-    future = m.make_future_dataframe(periods=6, freq='M')
-    fc = m.predict(future)
-    st.line_chart(fc.set_index('ds')['yhat'])
+
+    if len(monthly.dropna()) >= 2:  # ✅ Only run if enough data
+        from prophet import Prophet
+        m = Prophet(yearly_seasonality=False)
+        m.fit(monthly[['ds','y']])
+        future = m.make_future_dataframe(periods=6, freq='M')
+        fc = m.predict(future)
+        st.subheader("📈 Forecast")
+        st.line_chart(fc.set_index('ds')['yhat'])
+    else:
+        st.warning("⚠️ Not enough historical data to generate a forecast.")
+
 
 api_key = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY"))
 if api_key:
